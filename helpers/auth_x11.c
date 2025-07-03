@@ -93,6 +93,10 @@ int prompt_timeout;
 //! Extra line spacing.
 #define LINE_SPACING 4
 
+// top left pixel margins
+static int top_left_x = -1;
+static int top_left_y = -1;
+
 //! Actual password prompt selected
 enum PasswordPrompt {
   PASSWORD_PROMPT_CURSOR,
@@ -566,11 +570,27 @@ void DestroyPerMonitorWindows(size_t keep_windows) {
 void CreateOrUpdatePerMonitorWindow(size_t i, const Monitor *monitor,
                                     int region_w, int region_h, int x_offset,
                                     int y_offset) {
+  const char *top_left = GetStringSetting("XSECURELOCK_TOP_LEFT", NULL);
+  if (top_left != NULL) {
+    int x = 0, y = 0;
+    if (sscanf(top_left, "%d:%d", &x, &y) == 2) {
+      top_left_x = x;
+      top_left_y = y;
+    }
+  }
+
   // Desired box.
   int w = region_w;
   int h = region_h;
-  int x = monitor->x + (monitor->width - w) / 2 + x_offset;
-  int y = monitor->y + (monitor->height - h) / 2 + y_offset;
+  int x =
+      (top_left != NULL)
+          ? monitor->x + top_left_x + x_offset
+          : monitor->x + (monitor->width - w) / 2 + x_offset;
+  int y =
+      (top_left != NULL)
+          ? monitor->y + top_left_y + y_offset
+          : monitor->y + (monitor->height - h) / 2 + y_offset;
+
   // Clip to monitor.
   if (x < 0) {
     w += x;
@@ -923,10 +943,11 @@ void DisplayMessage(const char *title, const char *str, int is_warning) {
                           x_offset, y_offset);
   per_monitor_windows_dirty = 0;
 
+  const int is_top_left = (top_left_x != -1);
   for (size_t i = 0; i < num_windows; ++i) {
     int cx = region_w / 2;
     int cy = region_h / 2;
-    int y = cy + to - box_h / 2;
+    int y = is_top_left ? to : cy + to - box_h / 2;
 
     XClearWindow(display, windows[i]);
 
@@ -937,30 +958,33 @@ void DisplayMessage(const char *title, const char *str, int is_warning) {
 #endif
 
     if (show_datetime) {
-      DrawString(i, cx - tw_datetime / 2, y, 0, datetime, len_datetime);
-      y += th * 2;
+      const int x_pos = is_top_left ? 0 : cx - tw_datetime / 2;
+      DrawString(i, x_pos, y, 0, datetime, len_datetime);
+      y += is_top_left ? th : th * 2;
     }
 
-    DrawString(i, cx - tw_full_title / 2, y, is_warning, full_title,
-               len_full_title);
-    y += th * 2;
+    const int x_pos_title = is_top_left ? 0 : cx - tw_full_title / 2;
+    DrawString(i, x_pos_title, y, is_warning, full_title, len_full_title);
+    y += is_top_left ? th : th * 2;
 
-    DrawString(i, cx - tw_str / 2, y, is_warning, str, len_str);
+    const int x_pos_str = is_top_left ? 0 : cx - tw_str / 2;
+    DrawString(i, x_pos_str, y, is_warning, str, len_str);
     y += th;
 
-    DrawString(i, cx - tw_indicators / 2, y, indicators_warning, indicators,
+    const int x_pos_indicators = is_top_left ? 0 : cx - tw_indicators / 2;
+    DrawString(i, x_pos_indicators, y, indicators_warning, indicators,
                len_indicators);
     y += th;
 
     if (have_multiple_layouts) {
-      DrawString(i, cx - tw_switch_layout / 2, y, 0, switch_layout,
-                 len_switch_layout);
+      const int x_pos_layout = is_top_left ? 0 : cx - tw_switch_layout / 2;
+      DrawString(i, x_pos_layout, y, 0, switch_layout, len_switch_layout);
       y += th;
     }
 
     if (have_switch_user_command) {
-      DrawString(i, cx - tw_switch_user / 2, y, 0, switch_user,
-                 len_switch_user);
+      const int x_pos_user = is_top_left ? 0 : cx - tw_switch_user / 2;
+      DrawString(i, x_pos_user, y, 0, switch_user, len_switch_user);
       // y += th;
     }
   }
@@ -1025,7 +1049,8 @@ void BumpDisplayMarker(size_t pwlen, size_t *pos,
 void ShowFromArray(const char **array, size_t displaymarker, char *displaybuf,
                    size_t displaybufsize, size_t *displaylen) {
   const char *selection = array[displaymarker];
-  strncpy(displaybuf, selection, displaybufsize);
+  /* strncpy(displaybuf, selection, displaybufsize); */
+  strncpy(displaybuf, selection, displaybufsize - 1);
   displaybuf[displaybufsize - 1] = 0;
   *displaylen = strlen(selection);
 }

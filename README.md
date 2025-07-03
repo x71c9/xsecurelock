@@ -430,6 +430,9 @@ Options to XSecureLock can be passed by environment variables:
     screen of `auth_x11`.
 *   `XSECURELOCK_SINGLE_AUTH_WINDOW`: whether to show only a single auth window
     from `auth_x11`, as opposed to one per screen.
+*   `XSECURELOCK_TOP_LEFT`: If set to `x:y` coordinates, the authentication
+    window will be positioned at that top-left corner of the screen. Otherwise,
+    the window is centered.
 *   `XSECURELOCK_SWITCH_USER_COMMAND`: shell command to execute when `Win-O` or
     `Ctrl-Alt-O` are pressed (think "_other_ user"). Typical values could be
     `lxdm -c USER_SWITCH`, `dm-tool switch-to-greeter`, `gdmflexiserver` or
